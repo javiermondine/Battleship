@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battleship - Hundir la Flota</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚓ Battleship - Hundir la Flota ⚓</h1>
+      <p id="message" class="message"></p>
+    </header>
+
+    <section class="setup-section">
+      <h2>Preparación del Juego</h2>
+      <div class="setup-controls">
+        <button id="randomPlacementBtn" class="btn btn-primary">Colocar Barcos Aleatoriamente</button>
+        <button id="resetBtn" class="btn btn-secondary">Nueva Partida</button>
+        <button id="startGameBtn" class="btn btn-success" disabled>Comenzar Juego</button>
+      </div>
+    </section>
+
+    <section class="game-section">
+      <div class="boards-wrapper">
+        <div class="board-container">
+          <h3>Tu Tablero</h3>
+          <div id="playerBoard" class="board"></div>
+        </div>
+
+        <div class="board-container">
+          <h3>Tablero Enemigo</h3>
+          <div id="enemyBoard" class="board"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="info-section">
+      <div class="info-box">
+        <h3>Estado del Juego</h3>
+        <p><strong>Turno:</strong> <span id="turn">Preparación</span></p>
+        <p><strong>Barcos Enemigos Hundidos:</strong> <span id="enemySunkCount">0/10</span></p>
+        <p><strong>Tus Barcos Hundidos:</strong> <span id="playerSunkCount">0/10</span></p>
+      </div>
+    </section>
+
+    <footer>
+      <p>Juego Battleship implementado con JavaScript puro + Jest</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
