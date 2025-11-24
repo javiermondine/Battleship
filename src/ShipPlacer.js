@@ -6,8 +6,14 @@ function autoPlaceShips(gameboard) {
     let placed = false;
     for (let attempts = 0; attempts < 100 && !placed; attempts++) {
       const direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
-      const x = Math.floor(Math.random() * (direction === 'horizontal' ? 10 - size + 1 : 10));
-      const y = Math.floor(Math.random() * (direction === 'vertical' ? 10 - size + 1 : 10));
+      // For horizontal: x can be 0 to (10 - size), y can be 0 to 9
+      // For vertical: x can be 0 to 9, y can be 0 to (10 - size)
+      const x = direction === 'horizontal' 
+        ? Math.floor(Math.random() * (11 - size))
+        : Math.floor(Math.random() * 10);
+      const y = direction === 'vertical'
+        ? Math.floor(Math.random() * (11 - size))
+        : Math.floor(Math.random() * 10);
       try {
         gameboard.placeShip(x, y, size, direction);
         placed = true;

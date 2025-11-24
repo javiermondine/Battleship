@@ -1,25 +1,17 @@
-// app.js - Game Controller (runs in browser, requires bundled modules or can be adapted)
-// For now, this is pseudocode showing the intended UI flow
-// A proper implementation would need module bundling or vanilla JS imports
-
+// app.js - Game Controller
 (function() {
   'use strict';
 
-  // Mock object holders - in production these would come from proper imports
   let player = null;
   let computer = null;
-  let gameManager = null;
-  let uiManager = null;
   let gameStarted = false;
 
-  // Simple module imports (would use proper bundling in production)
-  const mockGameState = {
+  const gameState = {
     shipsPlaced: false,
     gameInProgress: false,
     gameOver: false
   };
 
-  // UI Functions
   function showMessage(text, type = 'info') {
     const msg = document.getElementById('message');
     if (msg) {
@@ -31,30 +23,8 @@
     }
   }
 
-  function renderPlayerBoard() {
-    const container = document.getElementById('playerBoard');
+  function renderBoard(gameboard, container, isEnemy = false) {
     container.innerHTML = '';
-    renderBoard(player.gameboard, container, false);
-  }
-
-  function renderEnemyBoard() {
-    const container = document.getElementById('enemyBoard');
-    container.innerHTML = '';
-    const grid = renderBoard(player.gameboard, container, true, true);
-    
-    // Add click handlers to enemy board
-    const cells = grid.querySelectorAll('.board-cell');
-    cells.forEach(cell => {
-      cell.addEventListener('click', () => {
-        if (!gameStarted || mockGameState.gameOver) return;
-        const x = parseInt(cell.dataset.x);
-        const y = parseInt(cell.dataset.y);
-        playerAttack(x, y);
-      });
-    });
-  }
-
-  function renderBoard(gameboard, container, isEnemy = false, interactive = false) {
     const grid = document.createElement('div');
     grid.className = 'game-grid';
 
@@ -100,7 +70,6 @@
             }
           }
         }
-
         grid.appendChild(cell);
       }
     }
@@ -114,15 +83,14 @@
     const enemySunk = document.getElementById('enemySunkCount');
     const playerSunk = document.getElementById('playerSunkCount');
 
-    if (gameStarted && !mockGameState.gameOver) {
+    if (gameStarted && !gameState.gameOver) {
       turn.textContent = 'Tu turno (haz clic en el tablero enemigo)';
-    } else if (mockGameState.gameOver) {
+    } else if (gameState.gameOver) {
       turn.textContent = 'Juego terminado';
     } else {
       turn.textContent = 'Preparación - Coloca tus barcos';
     }
 
-    // Count sunk ships
     const enemyShips = computer.gameboard.getShips();
     const playerShips = player.gameboard.getShips();
     const enemySunkCount = enemyShips.filter(s => s.sunk).length;
@@ -143,23 +111,19 @@
         showMessage(`Agua en (${x}, ${y})...`, 'info');
       }
 
-      // Check win condition
       if (computer.gameboard.allShipsSunk()) {
-        mockGameState.gameOver = true;
+        gameState.gameOver = true;
         showMessage('¡Ganaste! Hundiste todos los barcos enemigos.', 'success');
         updateGameInfo();
-        renderPlayerBoard();
-        renderEnemyBoard();
+        renderBoard(player.gameboard, document.getElementById('playerBoard'), false);
+        renderBoard(computer.gameboard, document.getElementById('enemyBoard'), true);
+        document.getElementById('enemyBoard').style.pointerEvents = 'none';
         return;
       }
 
-      // Computer's turn after a delay
       setTimeout(() => {
         computerAttack();
-        updateGameInfo();
-        renderPlayerBoard();
-        renderEnemyBoard();
-      }, 1000);
+      }, 800);
     } catch (e) {
       showMessage(`Error: ${e.message}`, 'error');
     }
@@ -176,84 +140,99 @@
         showMessage(`Computadora disparó a agua`, 'info');
       }
 
-      // Check lose condition
       if (player.gameboard.allShipsSunk()) {
-        mockGameState.gameOver = true;
+        gameState.gameOver = true;
         showMessage('Perdiste. La computadora hundió todos tus barcos.', 'error');
+        updateGameInfo();
+        renderBoard(player.gameboard, document.getElementById('playerBoard'), false);
+        renderBoard(computer.gameboard, document.getElementById('enemyBoard'), true);
+        document.getElementById('enemyBoard').style.pointerEvents = 'none';
+        return;
       }
+
+      updateGameInfo();
+      renderBoard(player.gameboard, document.getElementById('playerBoard'), false);
+      renderBoard(computer.gameboard, document.getElementById('enemyBoard'), true);
+      attachEnemyBoardListeners();
     } catch (e) {
-      showMessage(`Error en turno computadora: ${e.message}`, 'error');
+      showMessage(`Error: ${e.message}`, 'error');
     }
   }
 
-  function autoPlaceShips() {
-    const sizes = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
-    try {
-      sizes.forEach(size => {
-        let placed = false;
-        for (let attempts = 0; attempts < 100 && !placed; attempts++) {
-          const direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
-          const x = Math.floor(Math.random() * (direction === 'horizontal' ? 10 - size + 1 : 10));
-          const y = Math.floor(Math.random() * (direction === 'vertical' ? 10 - size + 1 : 10));
-          try {
-            player.gameboard.placeShip(x, y, size, direction);
-            placed = true;
-          } catch (e) {
-            // retry
-          }
+  function attachEnemyBoardListeners() {
+    const container = document.getElementById('enemyBoard');
+    const cells = container.querySelectorAll('.board-cell');
+    cells.forEach(cell => {
+      cell.onclick = function() {
+        if (!gameStarted || gameState.gameOver) return;
+        const x = parseInt(this.dataset.x);
+        const y = parseInt(this.dataset.y);
+        if (player.movesMade.has(`${x},${y}`)) {
+          showMessage('Ya disparaste a esa posición', 'error');
+          return;
         }
-        if (!placed) throw new Error(`No se pudo colocar barco de tamaño ${size}`);
-      });
-      mockGameState.shipsPlaced = true;
+        playerAttack(x, y);
+      };
+    });
+  }
+
+  function placePlayerShips() {
+    try {
+      autoPlaceShips(player.gameboard);
+      gameState.shipsPlaced = true;
       showMessage('✓ Barcos colocados. ¡Haz clic en "Comenzar Juego"!', 'success');
       document.getElementById('startGameBtn').disabled = false;
-      renderPlayerBoard();
+      renderBoard(player.gameboard, document.getElementById('playerBoard'), false);
     } catch (e) {
-      showMessage(`Error al colocar barcos: ${e.message}`, 'error');
+      showMessage(`Error: ${e.message}`, 'error');
     }
   }
 
   function startGame() {
-    if (!mockGameState.shipsPlaced) {
+    if (!gameState.shipsPlaced) {
       showMessage('Coloca tus barcos primero', 'error');
       return;
     }
     gameStarted = true;
-    mockGameState.gameInProgress = true;
+    gameState.gameInProgress = true;
     showMessage('¡Juego iniciado! Haz clic en el tablero enemigo para disparar.', 'info');
     document.getElementById('randomPlacementBtn').disabled = true;
     document.getElementById('startGameBtn').disabled = true;
     updateGameInfo();
-    renderPlayerBoard();
-    renderEnemyBoard();
+    attachEnemyBoardListeners();
   }
 
   function resetGame() {
     gameStarted = false;
-    mockGameState.shipsPlaced = false;
-    mockGameState.gameInProgress = false;
-    mockGameState.gameOver = false;
+    gameState.shipsPlaced = false;
+    gameState.gameInProgress = false;
+    gameState.gameOver = false;
+    
+    player = createPlayer('human');
+    computer = createPlayer('computer');
+    autoPlaceShips(computer.gameboard);
+    
     showMessage('Nuevo juego. Coloca tus barcos.', 'info');
     document.getElementById('randomPlacementBtn').disabled = false;
     document.getElementById('startGameBtn').disabled = true;
+    document.getElementById('enemyBoard').style.pointerEvents = 'auto';
     
-    // Would reinitialize player and computer objects here
-    // player = createPlayer('human');
-    // computer = createPlayer('computer');
-    // Then auto-place computer ships
+    renderBoard(player.gameboard, document.getElementById('playerBoard'), false);
+    renderBoard(computer.gameboard, document.getElementById('enemyBoard'), true);
   }
 
-  // Event Listeners
-  document.getElementById('randomPlacementBtn')?.addEventListener('click', autoPlaceShips);
-  document.getElementById('startGameBtn')?.addEventListener('click', startGame);
-  document.getElementById('resetBtn')?.addEventListener('click', resetGame);
+  document.getElementById('randomPlacementBtn').addEventListener('click', placePlayerShips);
+  document.getElementById('startGameBtn').addEventListener('click', startGame);
+  document.getElementById('resetBtn').addEventListener('click', resetGame);
 
-  // Initialize game on load
   window.addEventListener('DOMContentLoaded', () => {
-    showMessage('Bienvenido a Battleship. Coloca tus barcos para comenzar.', 'info');
-    // Initialize would happen here
-    // player = createPlayer('human');
-    // computer = createPlayer('computer');
-    // Then auto-place computer ships
+    player = createPlayer('human');
+    computer = createPlayer('computer');
+    autoPlaceShips(computer.gameboard);
+    
+    showMessage('Bienvenido a Battleship. Haz clic en "Colocar Barcos" para comenzar.', 'info');
+    updateGameInfo();
+    renderBoard(player.gameboard, document.getElementById('playerBoard'), false);
+    renderBoard(computer.gameboard, document.getElementById('enemyBoard'), true);
   });
 })();
